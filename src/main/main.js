@@ -6,28 +6,18 @@ function createWindow() {
     width: 1200,
     height: 800,
     webPreferences: {
-        preload: path.join(__dirname, 'preload.js'),
-        contextIsolation: true,
-        nodeIntegration: false
-}
-
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
   });
 
-    const isDev = !app.isPackaged;
-    const devURL = 'http://localhost:5173';
-    const prodPath = path.join(__dirname, '../renderer/dist/index.html');
-
-    win.loadURL(isDev ? devURL : `file://${prodPath}`);
+  const devURL = 'http://localhost:5173';
+  const prodPath = path.join(__dirname, '../../renderer/dist/index.html');
+  win.loadURL(app.isPackaged ? `file://${prodPath}` : devURL);
 }
 
-app.whenReady().then(() => {
-  createWindow();
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
-});
-
+app.whenReady().then(createWindow);
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });

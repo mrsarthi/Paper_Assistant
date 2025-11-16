@@ -4,9 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-  "start": "electron ./src/main/main.js"
-}
-,
+    "start": "electron ./src/main/main.js"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mrsarthi/Paper_Assistant.git"

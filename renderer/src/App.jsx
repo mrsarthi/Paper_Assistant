@@ -1,18 +1,10 @@
-import { useState } from 'react';
+import OCRUploader from './components/OCRUploader';
 
 function App() {
-  const [message, setMessage] = useState('');
-
-  const handlePing = () => {
-    const reply = window.api.ping();
-    setMessage(reply);
-  };
-
   return (
     <div style={{ padding: '2rem' }}>
       <h1>ICSE Paper Builder</h1>
-      <button onClick={handlePing}>Ping</button>
-      <p>{message}</p>
+      <OCRUploader />
     </div>
   );
 }
