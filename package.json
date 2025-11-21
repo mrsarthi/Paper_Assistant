@@ -1,0 +1,15 @@
+{
+  "name": "paper-builder-pro",
+  "version": "1.0.0",
+  "description": "AI Exam Paper Digitizer",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "electron": "^33.0.0" 
+  }
+}

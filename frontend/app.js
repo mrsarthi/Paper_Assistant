@@ -198,7 +198,7 @@ const App = {
         App.utils.downloadBlob(blob, `Exam_Paper.docx`);
     },
 
-    // --- UTILS & UI ---
+    // --- UTILS & UI (Vibe coded) ---
     utils: {
         downloadBlob: (blob, filename) => {
             const url = window.URL.createObjectURL(blob);
@@ -209,7 +209,7 @@ const App = {
             a.click();
             document.body.removeChild(a);
         },
-        // === SEND TO AI BACKEND ===
+        // SEND TO AI BACKEND 
         sendToAI: async (file, sectionId) => {
             const formData = new FormData();
             formData.append("file", file);
