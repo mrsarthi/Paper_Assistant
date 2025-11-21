@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paper Builder Pro</title>
+    <style>
+        /* Design System */
+        :root {
+            --color-background: #fcfcf9;
+            --color-surface: #ffffff;
+            --color-text: #19343b;
+            --color-text-secondary: #626c71;
+            --color-primary: #21808d;
+            --color-primary-hover: #1d7480;
+            --color-border: rgba(94, 82, 64, 0.2);
+            --radius-base: 8px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: var(--color-text); background: var(--color-background); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+        .app-container { display: flex; flex-direction: column; height: 100%; }
+        .window-header { padding: 12px 16px; background: var(--color-surface); border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; }
+        .main-layout { display: flex; flex: 1; overflow: hidden; }
+        
+        .sidebar { width: 220px; background: var(--color-surface); border-right: 1px solid var(--color-border); padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+        .nav-btn { padding: 12px; border: none; background: transparent; text-align: left; cursor: pointer; border-radius: var(--radius-base); color: var(--color-text); display: flex; gap: 8px; align-items: center; transition: 0.2s; }
+        .nav-btn:hover { background: rgba(0,0,0,0.05); }
+        .nav-btn.active { background: var(--color-primary); color: white; }
+
+        .content-area { flex: 1; padding: 24px; overflow-y: auto; }
+        .panel { display: none; }
+        .panel.active { display: block; }
+        
+        .panel-header { margin-bottom: 24px; }
+        .panel-header h2 { font-size: 24px; margin-bottom: 8px; }
+        
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px; color: var(--color-text-secondary); }
+        .form-input, .form-select { width: 100%; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-base); font-size: 14px; background: white; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; background: var(--color-surface); padding: 20px; border-radius: var(--radius-base); border: 1px solid var(--color-border); }
+        
+        .mode-switch { display: flex; gap: 12px; margin-bottom: 20px; background: var(--color-surface); padding: 6px; border-radius: var(--radius-base); border: 1px solid var(--color-border); width: fit-content; }
+        .mode-btn { padding: 8px 16px; border: none; background: transparent; cursor: pointer; border-radius: 4px; font-weight: 500; color: var(--color-text-secondary); }
+        .mode-btn.active { background: var(--color-primary); color: white; }
+
+        /* Upload Items */
+        .section-upload-grid { display: grid; gap: 12px; }
+        .section-upload-item { display: flex; flex-direction: column; background: white; padding: 16px; border: 1px solid var(--color-border); border-radius: var(--radius-base); }
+        .section-header-row { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        .upload-actions { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+        .upload-status { font-size: 12px; padding: 4px 8px; background: #eee; border-radius: 4px; min-width: 80px; text-align: center; }
+        .upload-status.scanning { background: #fff7ed; color: #c05621; }
+        .upload-status.done { background: #e6fffa; color: #047481; }
+        
+        .source-toggle { display: flex; gap: 15px; font-size: 13px; margin-top: 8px; }
+        .source-toggle label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+
+        .upload-zone { border: 2px dashed var(--color-border); padding: 40px; text-align: center; border-radius: var(--radius-base); cursor: pointer; transition: 0.2s; background: var(--color-surface); margin-top: 16px; }
+        
+        .question-card { background: var(--color-surface); padding: 16px; border: 1px solid var(--color-border); border-radius: var(--radius-base); margin-bottom: 16px; box-shadow: var(--shadow-sm); }
+        .question-textarea { width: 100%; min-height: 100px; padding: 12px; margin: 12px 0; border: 1px solid var(--color-border); border-radius: var(--radius-base); resize: vertical; font-family: inherit; line-height: 1.5; }
+        .question-controls { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
+        
+        .btn { padding: 10px 20px; border: none; border-radius: var(--radius-base); cursor: pointer; font-weight: 500; transition: 0.2s; }
+        .btn-primary { background: var(--color-primary); color: white; }
+        .btn-secondary { background: rgba(94, 82, 64, 0.1); color: var(--color-text); }
+        
+        .hidden { display: none !important; }
+        #extracted-text { white-space: pre-wrap; font-family: monospace; background: var(--color-surface); padding: 16px; border-radius: var(--radius-base); max-height: 300px; overflow-y: auto; margin-bottom: 16px; border: 1px solid var(--color-border); font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="window-header">
+            <div style="font-weight: 600; color: var(--color-primary); display: flex; gap: 8px; align-items: center;">
+                <span>📄</span> Paper Builder Pro
+            </div>
+        </div>
+
+        <div class="main-layout">
+            <div class="sidebar">
+                <button class="nav-btn active" onclick="App.ui.switchPanel('upload')">📤 Upload</button>
+                <button class="nav-btn" onclick="App.ui.switchPanel('process')">⚙️ Process</button>
+                <button class="nav-btn" onclick="App.ui.switchPanel('classify')">🏷️ Organize</button>
+                <button class="nav-btn" onclick="App.ui.switchPanel('review')">📋 Finalize</button>
+                <div style="flex: 1;"></div>
+                <button class="btn btn-secondary" onclick="location.reload()" style="width: 100%;">🔄 Reset</button>
+            </div>
+
+            <div class="content-area">
+                
+                <div id="upload-panel" class="panel active">
+                    <div class="panel-header">
+                        <h2>Start Project</h2>
+                        <p>Select structure and upload method.</p>
+                    </div>
+
+                    <div class="form-group" style="max-width: 400px;">
+                        <label class="form-label">Subject Template</label>
+                        <select id="subject-selector" class="form-select"></select>
+                    </div>
+
+                    <label class="form-label">Upload Method</label>
+                    <div class="mode-switch">
+                        <button class="mode-btn" id="mode-pdf" onclick="App.ui.setMode('pdf')">📄 PDF (Auto-Segment)</button>
+                        <button class="mode-btn active" id="mode-images" onclick="App.ui.setMode('images')">🖼️ Images (Section-wise)</button>
+                    </div>
+
+                    <div id="zone-pdf" class="upload-zone hidden" onclick="document.getElementById('file-input-pdf').click()">
+                        <div style="font-size: 48px; margin-bottom: 16px;">📄</div>
+                        <div>Upload Full PDF</div>
+                        <input type="file" id="file-input-pdf" class="hidden" accept=".pdf" onchange="App.handlers.fileUploadPdf(event)">
+                    </div>
+
+                    <div id="zone-images">
+                        <div class="section-upload-grid" id="section-grid-container">
+                            </div>
+                        
+                        <div id="image-actions" class="hidden" style="margin-top: 24px; padding: 16px; background: var(--color-surface); border-top: 1px solid var(--color-border); text-align: right;">
+                            <button class="btn btn-primary" onclick="App.handlers.finishImageUploads()">Proceed to Process →</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="process-panel" class="panel">
+                    <div class="panel-header">
+                        <h2>Extract Text</h2>
+                        <p>Review captured text.</p>
+                    </div>
+                    <div id="progress-section" class="hidden" style="text-align: center; padding: 20px;">
+                        <div class="spinner">⏳</div>
+                        <div id="progress-text">Processing...</div>
+                    </div>
+                    <div id="text-preview-section" class="hidden">
+                        <div id="extracted-text"></div>
+                        
+                        <button id="btn-segment" class="btn btn-primary hidden" onclick="App.handlers.segment()">Segment Questions</button>
+                        
+                        <button id="btn-organize-direct" class="btn btn-primary hidden" onclick="App.ui.switchPanel('classify')">Proceed to Organize</button>
+                    </div>
+                </div>
+
+                <div id="classify-panel" class="panel">
+                    <div class="panel-header">
+                        <h2>Organize</h2>
+                        <p>Verify text assignment.</p>
+                    </div>
+                    <div id="questions-container"></div>
+                    <button class="btn btn-secondary" onclick="App.handlers.addQuestion()" style="margin-top: 16px;">+ Add Manual Question</button>
+                </div>
+
+                <div id="review-panel" class="panel">
+                    <div class="panel-header">
+                        <h2>Final Details & Export</h2>
+                        <p>Review headers and download.</p>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group"><label class="form-label">Exam Name</label><input type="text" id="meta-exam" class="form-input" placeholder="Annual Examination"></div>
+                        <div class="form-group"><label class="form-label">Class</label><input type="text" id="meta-class" class="form-input" placeholder="Class - IX"></div>
+                        <div class="form-group"><label class="form-label">Time</label><input type="text" id="meta-time" class="form-input" value="2 Hrs."></div>
+                        <div class="form-group"><label class="form-label">Marks</label><input type="text" id="meta-marks" class="form-input" value="80"></div>
+                    </div>
+
+                    <div style="padding: 15px; background: #f0f9ff; border-radius: 8px; margin-bottom: 20px; border: 1px solid #bae6fd; font-size: 14px;">
+                        <strong>Note:</strong> Uploaded images for "Header" or "General Instructions" will override these defaults.
+                    </div>
+
+                    <button class="btn btn-primary" onclick="App.handlers.export()">Download Formatted DOCX</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3/build/pdf.min.js"></script>
+    <script src="https://unpkg.com/docx@7.1.0/build/index.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
