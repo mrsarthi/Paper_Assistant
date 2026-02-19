@@ -3,55 +3,60 @@ const path = require('path');
 const { spawn } = require('child_process');
 
 let mainWindow;
-let pythonProcess;
+let apiProcess;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1200,
+    width: 1280,
     height: 800,
     webPreferences: {
       nodeIntegration: true,
-      contextIsolation: false, // For simple apps; use preload for production
+      contextIsolation: false,
     },
   });
 
-  // Load your frontend
-  mainWindow.loadFile('frontend/index.html');
+  // Load frontend
+  mainWindow.loadFile(path.join(__dirname, 'frontend', 'index.html'));
 
   mainWindow.on('closed', function () {
     mainWindow = null;
   });
 }
 
-function startPythonServer() {
-  // Adjust 'python' to 'python3' for Mac/Linux if needed
-  // Pointing to the backend folder
-  const backendPath = path.join(__dirname, 'backend');
+function startApi() {
+  // Correct path for development vs production
+  let scriptPath;
   
-  console.log("Starting Python Server...");
-  
-  pythonProcess = spawn('python', ['server.py'], {
-    cwd: backendPath, // Set working directory to backend
+  if (app.isPackaged) {
+    // In the final installed app, resources are moved
+    // Typically: resources/bin/server.exe
+    scriptPath = path.join(process.resourcesPath, 'bin', 'server.exe');
+  } else {
+    // In development (npm start)
+    scriptPath = path.join(__dirname, 'bin', 'server.exe');
+  }
+
+  console.log("Launching API from:", scriptPath);
+
+  apiProcess = spawn(scriptPath);
+
+  apiProcess.stdout.on('data', (data) => {
+    console.log(`API: ${data}`);
   });
 
-  pythonProcess.stdout.on('data', (data) => {
-    console.log(`Python: ${data}`);
-  });
-
-  pythonProcess.stderr.on('data', (data) => {
-    console.error(`Python Error: ${data}`);
+  apiProcess.stderr.on('data', (data) => {
+    console.error(`API Error: ${data}`);
   });
 }
 
 app.on('ready', () => {
-  startPythonServer();
-  // Give Python a second to boot up before opening window
-  setTimeout(createWindow, 1000);
+  // startApi();
+  // Wait 2s for Python to start before showing window
+  setTimeout(createWindow, 2000);
 });
 
 app.on('window-all-closed', () => {
-  // Kill Python process on exit
-  if (pythonProcess) pythonProcess.kill();
+  if (apiProcess) apiProcess.kill();
   if (process.platform !== 'darwin') app.quit();
 });
 

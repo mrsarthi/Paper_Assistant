@@ -2,16 +2,20 @@ import uvicorn
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 import google.generativeai as genai
-import io
-from dotenv import load_dotenv
 import os
+# import sys
+from dotenv import load_dotenv
 
 load_dotenv()
 
-GOOGLE_API_KEY = os.getenv("api_key") 
+GOOGLE_API_KEY = os.getenv("api_key")
 
-genai.configure(api_key=GOOGLE_API_KEY)
-model = genai.GenerativeModel('gemini-2.5-flash')
+if not GOOGLE_API_KEY:
+    print("No API key found!")
+
+elif GOOGLE_API_KEY:
+    genai.configure(api_key=GOOGLE_API_KEY)
+    model = genai.GenerativeModel('gemini-flash-latest')
 
 app = FastAPI()
 
@@ -25,14 +29,13 @@ app.add_middleware(
 
 @app.post("/process-image")
 async def process_image(file: UploadFile = File(...), section: str = Form(...)):
-    print(f"📥 Received image for section: {section}")
+    print(f"Received image for section: {section}")
     
     try:
         image_bytes = await file.read()
         
         prompt = f"""
         You are an expert data entry professional digitizing an exam paper.
-        
         Task: Extract the text from this image for the section: '{section}'.
         
         Strict Rules:
@@ -49,12 +52,22 @@ async def process_image(file: UploadFile = File(...), section: str = Form(...)):
         ])
         
         clean_text = response.text.strip()
-        print("✅ AI Processing Complete")
+        print("AI Processing Complete")
         return {"text": clean_text}
 
     except Exception as e:
-        print(f"❌ Error: {e}")
-        return {"text": "Error processing image. Please check server logs."}
+        print(f"Error: {e}")
+        return {"text": f"Error processing image: {str(e)}"}
+
+log_config = uvicorn.config.LOGGING_CONFIG
+log_config["formatters"]["access"]["fmt"] = "%(asctime)s - %(levelname)s - %(message)s"
+log_config["formatters"]["default"]["fmt"] = "%(asctime)s - %(levelname)s - %(message)s"
+
+if "use_colors" in log_config["formatters"]["default"]:
+    del log_config["formatters"]["default"]["use_colors"]
+if "use_colors" in log_config["formatters"]["access"]:
+    del log_config["formatters"]["access"]["use_colors"]
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    print("Server starting...")
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_config=log_config)

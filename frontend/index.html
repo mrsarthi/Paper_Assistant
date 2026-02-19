@@ -69,6 +69,71 @@
         
         .hidden { display: none !important; }
         #extracted-text { white-space: pre-wrap; font-family: monospace; background: var(--color-surface); padding: 16px; border-radius: var(--radius-base); max-height: 300px; overflow-y: auto; margin-bottom: 16px; border: 1px solid var(--color-border); font-size: 12px; }
+
+        /* ===== Print-Ready PDF Styles ===== */
+        #print-area {
+            display: none;
+        }
+
+        @media print {
+            /* Hide the entire app UI */
+            body > .app-container { display: none !important; }
+
+            /* Show and style the print area */
+            #print-area {
+                display: block !important;
+                font-family: 'Times New Roman', Times, serif;
+                font-size: 14pt;
+                line-height: 1.6;
+                color: #000;
+                background: #fff;
+            }
+
+            @page {
+                size: A4;
+                margin: 20mm 18mm 20mm 18mm;
+            }
+
+            .print-header { text-align: center; margin-bottom: 12pt; }
+            .print-header .exam-name { font-size: 16pt; font-weight: bold; }
+            .print-header .class-name { font-size: 14pt; font-weight: bold; }
+            .print-header .subject-name { font-size: 14pt; font-weight: bold; margin-bottom: 8pt; }
+
+            .print-meta {
+                display: flex;
+                justify-content: space-between;
+                font-weight: bold;
+                font-size: 14pt;
+                margin-bottom: 12pt;
+                padding-bottom: 4pt;
+                border-bottom: 1px solid #000;
+            }
+
+            .print-instructions { margin-bottom: 16pt; }
+            .print-instructions .inst-title { font-weight: bold; text-decoration: underline; margin-bottom: 4pt; }
+            .print-instructions p { margin: 2pt 0; font-size: 13pt; }
+
+            .print-section { margin-top: 16pt; }
+            .print-section-header {
+                display: flex;
+                justify-content: space-between;
+                font-weight: bold;
+                font-size: 14pt;
+                margin-bottom: 6pt;
+            }
+            .print-section-inst { font-style: italic; margin-bottom: 6pt; font-size: 13pt; }
+
+            .print-question-line {
+                display: flex;
+                justify-content: space-between;
+                margin: 3pt 0;
+                font-size: 14pt;
+            }
+            .print-question-line.sub-question {
+                padding-left: 28pt;
+            }
+            .print-marks { font-weight: bold; white-space: nowrap; padding-left: 16pt; }
+        }
     </style>
 </head>
 <body>
@@ -168,11 +233,17 @@
                         <strong>Note:</strong> Uploaded images for "Header" or "General Instructions" will override these defaults.
                     </div>
 
-                    <button class="btn btn-primary" onclick="App.handlers.export()">Download Formatted DOCX</button>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        <button class="btn btn-primary" onclick="App.handlers.export()">📥 Download DOCX</button>
+                        <button class="btn btn-primary" onclick="App.handlers.printPdf()" style="background: #2563eb;">🖨️ Print / Save PDF</button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Hidden print area, only visible during print -->
+    <div id="print-area"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3/build/pdf.min.js"></script>

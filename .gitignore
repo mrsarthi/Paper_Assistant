@@ -3,5 +3,6 @@ checkmodel.py
 /.venv
 __pycache__/
 /node_modules
+/backend/output
 
 

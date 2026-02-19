@@ -50,7 +50,7 @@ const App = {
         currentSchemaKey: 'english-lang-9',
         uploadMode: 'images',
         extractedText: '',
-        questions: [] 
+        questions: []
     },
 
     init: () => {
@@ -67,7 +67,7 @@ const App = {
             App.ui.renderUploadSlots();
         });
 
-        App.ui.setMode('images'); 
+        App.ui.setMode('images');
         App.ui.renderUploadSlots();
     },
 
@@ -88,7 +88,7 @@ const App = {
         const { Document, Packer, Paragraph, TextRun, AlignmentType, TabStopType, TabStopPosition } = docx;
 
         const GLOBAL_FONT = "Times New Roman";
-        const GLOBAL_SIZE = 28; 
+        const GLOBAL_SIZE = 28;
 
         const docChildren = [];
 
@@ -136,7 +136,7 @@ const App = {
                 docChildren.push(new Paragraph({ children: [new TextRun({ text: inst, font: GLOBAL_FONT, size: GLOBAL_SIZE })] }));
             });
         }
-        docChildren.push(new Paragraph({ text: "", spacing: { after: 240 } })); 
+        docChildren.push(new Paragraph({ text: "", spacing: { after: 240 } }));
 
         // SECTIONS
         schema.sections.forEach(sectionDef => {
@@ -165,12 +165,12 @@ const App = {
                     const lines = cleanText.split('\n');
                     lines.forEach(line => {
                         line = line.trim();
-                        if(!line) return;
+                        if (!line) return;
                         let lineMarks = "";
-                        const marksMatch = line.match(/\[\s*(\d+)\s*\]$/); 
+                        const marksMatch = line.match(/\[\s*(\d+)\s*\]$/);
                         if (marksMatch) { lineMarks = marksMatch[0]; line = line.replace(marksMatch[0], "").trim(); }
                         let indentObj = {};
-                        const isSubQuestion = line.match(/^(\(?\w+\)|\d+\.)/); 
+                        const isSubQuestion = line.match(/^(\(?\w+\)|\d+\.)/);
                         if (isSubQuestion) indentObj = { left: 720, hanging: 360 };
 
                         docChildren.push(new Paragraph({
@@ -240,6 +240,109 @@ const App = {
                 full += content.items.map(x => x.str).join(' ') + '\n';
             }
             return full;
+        },
+
+        // Generate print-ready HTML for the exam paper
+        generatePrintHTML: () => {
+            const schema = App.getSchema();
+            let html = '';
+
+            // ---- HEADER ----
+            const customHeader = App.state.questions.find(q => q.sectionId === 'HEADER');
+            if (customHeader) {
+                html += '<div class="print-header">';
+                customHeader.text.split('\n').forEach(line => {
+                    line = line.trim();
+                    if (line) html += `<div class="exam-name">${App.utils.escapeHtml(line)}</div>`;
+                });
+                html += '</div>';
+            } else {
+                const examName = document.getElementById('meta-exam').value || '';
+                const className = document.getElementById('meta-class').value || '';
+                const subject = schema.defaultSubjectTitle;
+                const time = document.getElementById('meta-time').value;
+                const marks = document.getElementById('meta-marks').value;
+
+                html += '<div class="print-header">';
+                if (examName) html += `<div class="exam-name">${App.utils.escapeHtml(examName)}</div>`;
+                if (className) html += `<div class="class-name">${App.utils.escapeHtml(className)}</div>`;
+                html += `<div class="subject-name">${App.utils.escapeHtml(subject)}</div>`;
+                html += '</div>';
+
+                html += `<div class="print-meta">`;
+                html += `<span>Time: ${App.utils.escapeHtml(time)}</span>`;
+                html += `<span>M.M: ${App.utils.escapeHtml(marks)}</span>`;
+                html += `</div>`;
+            }
+
+            // ---- INSTRUCTIONS ----
+            html += '<div class="print-instructions">';
+            html += '<div class="inst-title">General Instructions:</div>';
+            const customInst = App.state.questions.find(q => q.sectionId === 'GEN_INST');
+            if (customInst) {
+                customInst.text.split('\n').forEach(line => {
+                    line = line.trim();
+                    if (line) html += `<p>${App.utils.escapeHtml(line)}</p>`;
+                });
+            } else if (schema.standardInstructions) {
+                schema.standardInstructions.forEach(inst => {
+                    html += `<p>${App.utils.escapeHtml(inst)}</p>`;
+                });
+            }
+            html += '</div>';
+
+            // ---- SECTIONS ----
+            schema.sections.forEach(sectionDef => {
+                if (sectionDef.id === 'HEADER' || sectionDef.id === 'GEN_INST') return;
+
+                const questions = App.state.questions.filter(q => q.sectionId === sectionDef.id);
+                if (questions.length > 0) {
+                    html += '<div class="print-section">';
+                    html += `<div class="print-section-header">`;
+                    html += `<span>${App.utils.escapeHtml(sectionDef.title)}</span>`;
+                    html += `<span>[${sectionDef.marks}]</span>`;
+                    html += `</div>`;
+
+                    sectionDef.instructions.forEach(inst => {
+                        html += `<div class="print-section-inst">${App.utils.escapeHtml(inst)}</div>`;
+                    });
+
+                    questions.forEach(q => {
+                        let cleanText = q.text.replace(/Question\s*\d+/i, '').trim();
+                        const lines = cleanText.split('\n');
+                        lines.forEach(line => {
+                            line = line.trim();
+                            if (!line) return;
+
+                            let lineMarks = '';
+                            const marksMatch = line.match(/\[\s*(\d+)\s*\]$/);
+                            if (marksMatch) {
+                                lineMarks = marksMatch[0];
+                                line = line.replace(marksMatch[0], '').trim();
+                            }
+
+                            const isSubQuestion = line.match(/^(\(?\w+\)|\d+\.)/);
+                            const subClass = isSubQuestion ? ' sub-question' : '';
+
+                            html += `<div class="print-question-line${subClass}">`;
+                            html += `<span>${App.utils.escapeHtml(line)}</span>`;
+                            if (lineMarks) html += `<span class="print-marks">${App.utils.escapeHtml(lineMarks)}</span>`;
+                            html += `</div>`;
+                        });
+                    });
+
+                    html += '</div>';
+                }
+            });
+
+            return html;
+        },
+
+        // Escape HTML special characters
+        escapeHtml: (text) => {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
     },
 
@@ -256,7 +359,7 @@ const App = {
             App.state.uploadMode = mode;
             document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
             document.getElementById(`mode-${mode}`).classList.add('active');
-            
+
             if (mode === 'pdf') {
                 document.getElementById('zone-pdf').classList.remove('hidden');
                 document.getElementById('zone-images').classList.add('hidden');
@@ -279,7 +382,7 @@ const App = {
 
                 let toggleHTML = '';
                 let inputStyle = '';
-                
+
                 if (sec.id === 'HEADER' || sec.id === 'GEN_INST') {
                     toggleHTML = `
                         <div class="source-toggle">
@@ -344,19 +447,19 @@ const App = {
             statusEl.innerText = "AI Processing...";
             statusEl.classList.add('scanning');
             statusEl.classList.remove('error');
-            
+
             let combinedText = "";
 
             try {
                 for (let i = 0; i < files.length; i++) {
-                    statusEl.innerText = `AI Scanning ${i+1}/${files.length}`;
+                    statusEl.innerText = `AI Scanning ${i + 1}/${files.length}`;
                     const text = await App.utils.sendToAI(files[i], sectionId);
                     combinedText += App.processText(text) + "\n\n";
                 }
 
                 const existingIdx = App.state.questions.findIndex(q => q.sectionId === sectionId);
                 if (existingIdx >= 0) {
-                    App.state.questions[existingIdx].text = combinedText; 
+                    App.state.questions[existingIdx].text = combinedText;
                 } else {
                     App.state.questions.push({ id: Date.now(), text: combinedText, sectionId: sectionId });
                 }
@@ -377,10 +480,10 @@ const App = {
                 alert("No images uploaded yet!");
                 return;
             }
-            
+
             const schema = App.getSchema();
             let previewText = "--- EXTRACTED TEXT PREVIEW (AI ENHANCED) ---\n\n";
-            
+
             schema.sections.forEach(sec => {
                 const q = App.state.questions.find(item => item.sectionId === sec.id);
                 if (q) {
@@ -421,7 +524,7 @@ const App = {
             App.state.questions = segments.filter(s => s.trim().length > 5).map((txt, i) => ({
                 id: Date.now() + i,
                 text: txt.trim(),
-                sectionId: "Q" + (i+1)
+                sectionId: "Q" + (i + 1)
             }));
             App.ui.switchPanel('classify');
         },
@@ -435,7 +538,14 @@ const App = {
         },
         updateSection: (idx, val) => { App.state.questions[idx].sectionId = val; },
         updateText: (idx, val) => { App.state.questions[idx].text = val; },
-        export: () => App.generateDoc()
+        export: () => App.generateDoc(),
+
+        // Print / Save as PDF
+        printPdf: () => {
+            const printArea = document.getElementById('print-area');
+            printArea.innerHTML = App.utils.generatePrintHTML();
+            window.print();
+        }
     }
 };
 
