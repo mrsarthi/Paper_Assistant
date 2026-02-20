@@ -170,8 +170,10 @@ const App = {
                         const marksMatch = line.match(/\[\s*(\d+)\s*\]$/);
                         if (marksMatch) { lineMarks = marksMatch[0]; line = line.replace(marksMatch[0], "").trim(); }
                         let indentObj = {};
-                        const isSubQuestion = line.match(/^(\(?\w+\)|\d+\.)/);
-                        if (isSubQuestion) indentObj = { left: 720, hanging: 360 };
+                        const isSubQuestion = line.match(/^([a-z]\)|\([a-z]\)|[ivx]+\)|\([ivx]+\)|\d+\)|\(\d+\)|\d+\.)/i);
+                        if (isSubQuestion) {
+                            indentObj = { left: 450, hanging: 360 };
+                        }
 
                         docChildren.push(new Paragraph({
                             indent: indentObj,
@@ -180,7 +182,7 @@ const App = {
                                 ...(lineMarks ? [new TextRun({ text: `\t${lineMarks}`, font: GLOBAL_FONT, size: GLOBAL_SIZE, bold: true })] : [])
                             ],
                             tabStops: lineMarks ? [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }] : [],
-                            spacing: { after: 120 }
+                            spacing: { after: 60 } // Tighter spacing for bulleted lists
                         }));
                     });
                 });
@@ -211,8 +213,9 @@ const App = {
         },
         // SEND TO AI BACKEND 
         sendToAI: async (file, sectionId) => {
+            const compressedFile = await App.utils.compressImage(file);
             const formData = new FormData();
-            formData.append("file", file);
+            formData.append("file", compressedFile);
             formData.append("section", sectionId);
 
             try {
@@ -228,6 +231,46 @@ const App = {
                 alert("Cannot connect to Python Server. Ensure 'server.py' is running.");
                 throw error;
             }
+        },
+        compressImage: (file) => {
+            return new Promise((resolve) => {
+                if (!file.type.match(/image.*/)) {
+                    resolve(file);
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 1600;
+                        const MAX_HEIGHT = 1600;
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > height) {
+                            if (width > MAX_WIDTH) {
+                                height *= MAX_WIDTH / width;
+                                width = MAX_WIDTH;
+                            }
+                        } else {
+                            if (height > MAX_HEIGHT) {
+                                width *= MAX_HEIGHT / height;
+                                height = MAX_HEIGHT;
+                            }
+                        }
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        canvas.toBlob((blob) => {
+                            resolve(new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }));
+                        }, 'image/jpeg', 0.85);
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
         },
         // Fallback PDF reader
         readPDF: async (file) => {
@@ -321,12 +364,25 @@ const App = {
                                 line = line.replace(marksMatch[0], '').trim();
                             }
 
-                            const isSubQuestion = line.match(/^(\(?\w+\)|\d+\.)/);
+                            const isSubQuestion = line.match(/^([a-z]\)|\([a-z]\)|[ivx]+\)|\([ivx]+\)|\d+\)|\(\d+\)|\d+\.)/i);
                             const subClass = isSubQuestion ? ' sub-question' : '';
 
+                            // Isolate the list marker if it's a sub-question to put it in its own grid column
+                            let markerHtml = '';
+                            let textHtml = App.utils.escapeHtml(line);
+                            if (isSubQuestion) {
+                                const marker = isSubQuestion[0];
+                                markerHtml = `<div class="print-marker">${App.utils.escapeHtml(marker)}</div>`;
+                                textHtml = App.utils.escapeHtml(line.slice(marker.length).trim());
+                            }
+
                             html += `<div class="print-question-line${subClass}">`;
-                            html += `<span>${App.utils.escapeHtml(line)}</span>`;
-                            if (lineMarks) html += `<span class="print-marks">${App.utils.escapeHtml(lineMarks)}</span>`;
+                            if (isSubQuestion) {
+                                html += `<div class="print-question-content">${markerHtml}<div class="print-text">${textHtml}</div></div>`;
+                            } else {
+                                html += `<div class="print-question-content"><div class="print-text">${textHtml}</div></div>`;
+                            }
+                            if (lineMarks) html += `<div class="print-marks">${App.utils.escapeHtml(lineMarks)}</div>`;
                             html += `</div>`;
                         });
                     });
@@ -353,7 +409,15 @@ const App = {
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             const navMap = { 'upload': 0, 'process': 1, 'classify': 2, 'review': 3 };
             document.querySelectorAll('.nav-btn')[navMap[panelId]].classList.add('active');
+
             if (panelId === 'classify') App.ui.renderQuestions();
+            if (panelId === 'review') App.ui.updatePreview();
+        },
+        updatePreview: () => {
+            const previewBox = document.getElementById('live-preview-box');
+            if (previewBox) {
+                previewBox.innerHTML = App.utils.generatePrintHTML();
+            }
         },
         setMode: (mode) => {
             App.state.uploadMode = mode;

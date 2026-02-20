@@ -15,7 +15,7 @@ if not GOOGLE_API_KEY:
 
 elif GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
-    model = genai.GenerativeModel('gemini-flash-latest')
+    model = genai.GenerativeModel('gemini-2.5-flash')
 
 app = FastAPI()
 
@@ -36,7 +36,7 @@ async def process_image(file: UploadFile = File(...), section: str = Form(...)):
         
         prompt = f"""
         You are an expert data entry professional digitizing an exam paper.
-        Task: Extract the text from this image for the section: '{section}'.
+        Task: Extract ALL the text from this image exactly as it appears. DO NOT filter or skip any parts of the image content.
         
         Strict Rules:
         1. Return ONLY the extracted text. No markdown code blocks (```), no intro, no outro.
