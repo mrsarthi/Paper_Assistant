@@ -352,6 +352,9 @@ const App = {
 
                     questions.forEach(q => {
                         let cleanText = q.text.replace(/Question\s*\d+/i, '').trim();
+                        let blocks = [];
+                        let currentBlock = null;
+
                         const lines = cleanText.split('\n');
                         lines.forEach(line => {
                             line = line.trim();
@@ -364,25 +367,48 @@ const App = {
                                 line = line.replace(marksMatch[0], '').trim();
                             }
 
-                            const isSubQuestion = line.match(/^([a-z]\)|\([a-z]\)|[ivx]+\)|\([ivx]+\)|\d+\)|\(\d+\)|\d+\.)/i);
-                            const subClass = isSubQuestion ? ' sub-question' : '';
+                            const isSubQuestionMatch = line.match(/^([a-z]\)|\([a-z]\)|[ivx]+\)|\([ivx]+\)|\d+\)|\(\d+\)|\d+\.)/i);
 
-                            // Isolate the list marker if it's a sub-question to put it in its own grid column
+                            if (isSubQuestionMatch) {
+                                if (currentBlock) blocks.push(currentBlock);
+                                currentBlock = {
+                                    isSubQuestion: true,
+                                    marker: isSubQuestionMatch[0],
+                                    text: line.slice(isSubQuestionMatch[0].length).trim(),
+                                    marks: lineMarks
+                                };
+                            } else {
+                                if (!currentBlock) {
+                                    currentBlock = {
+                                        isSubQuestion: false,
+                                        marker: '',
+                                        text: line,
+                                        marks: lineMarks
+                                    };
+                                } else {
+                                    currentBlock.text += " " + line;
+                                    if (lineMarks) currentBlock.marks = lineMarks;
+                                }
+                            }
+                        });
+                        if (currentBlock) blocks.push(currentBlock);
+
+                        blocks.forEach(block => {
+                            const subClass = block.isSubQuestion ? ' sub-question' : '';
                             let markerHtml = '';
-                            let textHtml = App.utils.escapeHtml(line);
-                            if (isSubQuestion) {
-                                const marker = isSubQuestion[0];
-                                markerHtml = `<div class="print-marker">${App.utils.escapeHtml(marker)}</div>`;
-                                textHtml = App.utils.escapeHtml(line.slice(marker.length).trim());
+                            let textHtml = App.utils.escapeHtml(block.text);
+
+                            if (block.isSubQuestion) {
+                                markerHtml = `<div class="print-marker">${App.utils.escapeHtml(block.marker)}</div>`;
                             }
 
                             html += `<div class="print-question-line${subClass}">`;
-                            if (isSubQuestion) {
+                            if (block.isSubQuestion) {
                                 html += `<div class="print-question-content">${markerHtml}<div class="print-text">${textHtml}</div></div>`;
                             } else {
                                 html += `<div class="print-question-content"><div class="print-text">${textHtml}</div></div>`;
                             }
-                            if (lineMarks) html += `<div class="print-marks">${App.utils.escapeHtml(lineMarks)}</div>`;
+                            if (block.marks) html += `<div class="print-marks">${App.utils.escapeHtml(block.marks)}</div>`;
                             html += `</div>`;
                         });
                     });
